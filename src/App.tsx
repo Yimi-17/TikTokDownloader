@@ -25,11 +25,17 @@ export default function App() {
       if (!response.ok) {
         let errorData;
         try {
-          errorData = await response.json();
-        } catch {
-          throw new Error('Error de conexión con el servidor.');
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            errorData = await response.json();
+          } else {
+            const textResponse = await response.text();
+            throw new Error(textResponse || 'Error de conexión con el servidor.');
+          }
+        } catch (e: any) {
+          throw new Error(e.message || 'Error al comunicarse con el servidor.');
         }
-        throw new Error(errorData.error || 'No se pudo descargar el archivo.');
+        throw new Error(errorData?.error || 'No se pudo descargar el archivo.');
       }
 
       // Convertir la respuesta a un Blob (archivo binario) para descargar
