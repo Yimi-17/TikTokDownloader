@@ -1,0 +1,93 @@
+import express from 'express';
+import path from 'path';
+import { createServer as createViteServer } from 'vite';
+
+async function startServer() {
+  const app = express();
+  const PORT = 3000;
+
+  app.use(express.json());
+
+  // Endpoint para descargar video de TikTok
+  app.post('/api/download', async (req, res) => {
+    const { url, format = 'mp4' } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: 'La URL es requerida.' });
+    }
+
+    try {
+      // 1. Obtener los metadatos del video usando la API pública tikwm
+      // tikwm es una API ampliamente usada que permite la extracción gratuita de TikToks sin marca de agua
+      const apiRes = await fetch('https://tikwm.com/api/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        },
+        body: new URLSearchParams({ url: url, count: '12', cursor: '0', web: '1', hd: '1' })
+      });
+      
+      const data = await apiRes.json();
+
+      if (data.code !== 0 || !data.data || !data.data.play) {
+        return res.status(400).json({ error: 'No se pudo extraer el video. Verifica que la URL sea pública y válida.' });
+      }
+
+      let targetUrl = data.data.play;
+      let filename = 'tiktok-video.mp4';
+      let contentType = 'video/mp4';
+
+      if (format === 'hd' && data.data.hdplay) {
+        targetUrl = data.data.hdplay;
+      } else if (format === 'mp3' && data.data.music) {
+        targetUrl = data.data.music;
+        filename = 'tiktok-audio.mp3';
+        contentType = 'audio/mpeg';
+      }
+      
+      // La API a veces devuelve URLs relativas. Aseguramos que sea una URL absoluta.
+      if (targetUrl.startsWith('/')) {
+        targetUrl = `https://tikwm.com${targetUrl}`;
+      }
+
+      // 2. Obtener el stream del archivo original
+      const videoRes = await fetch(targetUrl);
+      if (!videoRes.ok) {
+        throw new Error('Error al descargar el archivo desde los servidores.');
+      }
+
+      // 3. Convertir a buffer y enviar al cliente como archivo descargable
+      const buffer = Buffer.from(await videoRes.arrayBuffer());
+      
+      // Configuramos los headers para forzar la descarga en el navegador
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', contentType);
+      res.send(buffer);
+
+    } catch (error) {
+      console.error('Error en /api/download:', error);
+      res.status(500).json({ error: 'Error interno del servidor al procesar el video.' });
+    }
+  });
+
+  // Vite middleware para desarrollo
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor backend corriendo en el puerto ${PORT}`);
+  });
+}
+
+startServer();

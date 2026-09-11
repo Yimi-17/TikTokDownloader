@@ -1,0 +1,6 @@
+{
+  "name": "TikTok Downloader",
+  "description": "Descarga videos de TikTok sin marca de agua.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
