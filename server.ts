@@ -65,9 +65,17 @@ async function startServer() {
       }
 
       // 2. Obtener el stream del archivo original
-      const videoRes = await fetch(targetUrl);
+      // Aumentamos el timeout y agregamos User-Agent para evitar rechazos por parte de los servidores CDN
+      const videoRes = await fetch(targetUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': '*/*',
+          'Referer': 'https://www.tiktok.com/'
+        }
+      });
+      
       if (!videoRes.ok) {
-        throw new Error('Error al descargar el archivo desde los servidores.');
+        throw new Error(`Error al descargar el archivo desde los servidores. Status: ${videoRes.status}`);
       }
 
       // Configuramos los headers para forzar la descarga en el navegador
