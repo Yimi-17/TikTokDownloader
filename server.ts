@@ -36,12 +36,20 @@ async function startServer() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         },
         body: new URLSearchParams({ url: url, count: '12', cursor: '0', web: '1', hd: '1' })
       });
       
-      const data = await apiRes.json();
+      const textData = await apiRes.text();
+      let data;
+      try {
+        data = JSON.parse(textData);
+      } catch (e) {
+        console.error('Tikwm no devolvió JSON. Respuesta:', textData.substring(0, 200));
+        return res.status(500).json({ error: 'Servidor de TikTok inalcanzable temporalmente. Intenta en un momento.' });
+      }
 
       if (data.code !== 0 || !data.data || !data.data.play) {
         return res.status(400).json({ error: 'No se pudo extraer el video. Verifica que la URL sea pública y válida.' });
