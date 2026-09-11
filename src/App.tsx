@@ -159,12 +159,12 @@ export default function App() {
               {status === 'loading' ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  Procesando...
+                  <span>Procesando...</span>
                 </>
               ) : (
                 <>
                   <Download className="w-5 h-5 mr-2" />
-                  Descargar {format === 'mp3' ? 'Audio' : 'Video'}
+                  <span>Descargar {format === 'mp3' ? 'Audio' : 'Video'}</span>
                 </>
               )}
             </button>
