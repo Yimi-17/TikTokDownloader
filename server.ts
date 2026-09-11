@@ -60,19 +60,16 @@ async function startServer() {
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', contentType);
       
-      // 3. Hacer stream de los datos directamente al cliente
-      if (videoRes.body) {
-        // En Node.js 18+, videoRes.body es un ReadableStream de la web
-        const reader = videoRes.body.getReader();
-        
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          res.write(value);
-        }
-        res.end();
-      } else {
-        throw new Error('No se pudo leer el archivo desde el servidor de origen.');
+      // 3. Obtener el archivo como un ArrayBuffer completo y enviarlo
+      // Usamos arrayBuffer porque los streams web (ReadableStream) pueden
+      // dar problemas de compatibilidad o cortarse en algunos entornos de proxy.
+      try {
+        const arrayBuffer = await videoRes.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        res.send(buffer);
+      } catch (err) {
+        console.error('Error procesando el flujo de datos:', err);
+        throw new Error('Error al leer el archivo original.');
       }
 
     } catch (error) {
