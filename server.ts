@@ -56,13 +56,24 @@ async function startServer() {
         throw new Error('Error al descargar el archivo desde los servidores.');
       }
 
-      // 3. Convertir a buffer y enviar al cliente como archivo descargable
-      const buffer = Buffer.from(await videoRes.arrayBuffer());
-      
       // Configuramos los headers para forzar la descarga en el navegador
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', contentType);
-      res.send(buffer);
+      
+      // 3. Hacer stream de los datos directamente al cliente
+      if (videoRes.body) {
+        // En Node.js 18+, videoRes.body es un ReadableStream de la web
+        const reader = videoRes.body.getReader();
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
+      } else {
+        throw new Error('No se pudo leer el archivo desde el servidor de origen.');
+      }
 
     } catch (error) {
       console.error('Error en /api/download:', error);
