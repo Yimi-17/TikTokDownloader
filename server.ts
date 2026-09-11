@@ -1,15 +1,29 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
+import rateLimit from 'express-rate-limit';
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Confiar en los proxies (necesario en Render, Vercel, Railway, etc. para obtener la IP real del usuario)
+  app.set('trust proxy', 1);
+
+  // Configurar límite de peticiones (Rate Limiting)
+  // Permite un máximo de 5 descargas por cada IP en un lapso de 1 minuto
+  const downloadLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minuto
+    max: 5, 
+    message: { error: 'Has superado el límite de descargas seguidas. Por favor, espera un minuto.' },
+    standardHeaders: true, // Retorna info de límite en headers RateLimit-*
+    legacyHeaders: false, // Deshabilita headers antiguos X-RateLimit-*
+  });
+
   app.use(express.json());
 
   // Endpoint para descargar video de TikTok
-  app.post('/api/download', async (req, res) => {
+  app.post('/api/download', downloadLimiter, async (req, res) => {
     const { url, format = 'mp4' } = req.body;
     if (!url) {
       return res.status(400).json({ error: 'La URL es requerida.' });
