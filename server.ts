@@ -82,21 +82,24 @@ async function startServer() {
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', contentType);
       
-      // 3. Obtener el archivo como un ArrayBuffer completo y enviarlo
-      // Usamos arrayBuffer porque los streams web (ReadableStream) pueden
-      // dar problemas de compatibilidad o cortarse en algunos entornos de proxy.
-      try {
-        const arrayBuffer = await videoRes.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        res.send(buffer);
-      } catch (err) {
-        console.error('Error procesando el flujo de datos:', err);
-        throw new Error('Error al leer el archivo original.');
+      // 3. Convertir Web Stream a Node Stream y enviarlo al cliente
+      if (videoRes.body) {
+        try {
+          const { Readable } = await import('stream');
+          const readable = Readable.fromWeb(videoRes.body as import('stream/web').ReadableStream);
+          readable.pipe(res);
+        } catch (err: any) {
+          console.error('Error procesando el stream de datos:', err);
+          throw new Error('No se pudo establecer el flujo de descarga.');
+        }
+      } else {
+        throw new Error('El servidor de origen no devolvió contenido.');
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error en /api/download:', error);
-      res.status(500).json({ error: 'Error interno del servidor al procesar el video.' });
+      // Enviar el error específico al frontend en lugar de un error genérico
+      res.status(500).json({ error: error.message || 'Error interno del servidor al procesar el video.' });
     }
   });
 
